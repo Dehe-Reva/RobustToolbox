@@ -138,16 +138,23 @@ public sealed class NetworkResourceManager : SharedNetworkResourceManager
 
     private async void SendToPlayer(INetChannel channel, List<(ResPath Relative, byte[] Data)> files, int ack = 0)
     {
-        await using var stream = TransferManager.StartTransfer(channel,
-            new TransferStartInfo
-            {
-                MessageKey = TransferKeyNetworkDownload
-            });
+        try
+        {
+            await using var stream = TransferManager.StartTransfer(channel,
+                new TransferStartInfo
+                {
+                    MessageKey = TransferKeyNetworkDownload
+                });
 
-        var ackBytes = new byte[4];
-        BinaryPrimitives.WriteInt32LittleEndian(ackBytes, ack);
-        await stream.WriteAsync(ackBytes);
+            var ackBytes = new byte[4];
+            BinaryPrimitives.WriteInt32LittleEndian(ackBytes, ack);
+            await stream.WriteAsync(ackBytes);
 
-        await WriteFileStream(stream, files);
+            await WriteFileStream(stream, files);
+        }
+        catch (Exception e) when (!channel.IsConnected)
+        {
+            Sawmill.Warning($"Aborted sending uploaded files to {channel.UserId}: client disconnected mid-transfer");
+        }
     }
 }
