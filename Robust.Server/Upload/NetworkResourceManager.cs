@@ -90,9 +90,17 @@ public sealed class NetworkResourceManager : SharedNetworkResourceManager
         Sawmill.Verbose("Ingesting file uploads from {Session}", session);
 
         List<(ResPath Relative, byte[] Data)> ingested;
-        await using (var stream = transfer.DataStream)
+        try
         {
-            ingested = await IngestFileStream(stream);
+            await using (var stream = transfer.DataStream)
+            {
+                ingested = await IngestFileStream(stream);
+            }
+        }
+        catch (Exception e)
+        {
+            Sawmill.Error($"Aborted ingesting file uploads from {session}: {e.Message}");
+            return;
         }
 
         Sawmill.Verbose("Ingesting file uploads complete, distributing...");
